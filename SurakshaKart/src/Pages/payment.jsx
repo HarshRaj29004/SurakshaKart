@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import QRCode from "react-qr-code";
 import { X, Copy, CheckCircle, Clock, XCircle } from "lucide-react"; // Import more icons
 import { useNavigate, useLocation } from "react-router-dom"; // Import useLocation
+import { useCallback } from "react";
 
 // --- Custom Hook for Timer (Abstraction) ---
 const useTimer = (initialSeconds, onTimerEnd) => {
@@ -9,15 +10,16 @@ const useTimer = (initialSeconds, onTimerEnd) => {
     const timerRef = useRef(null);
     const [isActive, setIsActive] = useState(false);
 
-    const startTimer = () => {
+    const startTimer = useCallback(() => {
+        clearInterval(timerRef.current);
         setSeconds(initialSeconds);
         setIsActive(true);
-    };
+    }, [initialSeconds]);
 
-    const stopTimer = () => {
+    const stopTimer = useCallback(() => {
         clearInterval(timerRef.current);
         setIsActive(false);
-    };
+    }, []);
 
     useEffect(() => {
         if (isActive) {
@@ -26,18 +28,16 @@ const useTimer = (initialSeconds, onTimerEnd) => {
                     if (prev <= 1) {
                         clearInterval(timerRef.current);
                         setIsActive(false);
-                        onTimerEnd && onTimerEnd(); // Call callback when timer ends
+                        onTimerEnd && onTimerEnd();
                         return 0;
                     }
                     return prev - 1;
                 });
             }, 1000);
-        } else {
-            clearInterval(timerRef.current);
         }
 
         return () => clearInterval(timerRef.current);
-    }, [isActive, initialSeconds, onTimerEnd]);
+    }, [isActive, onTimerEnd]);
 
     const formatTime = () => {
         const m = String(Math.floor(seconds / 60)).padStart(2, "0");
@@ -50,9 +50,9 @@ const useTimer = (initialSeconds, onTimerEnd) => {
 
 // --- Dummy Account Data ---
 const dummyAccount = {
-    accountHolder: "John Doe",
+    accountHolder: "Harsh Raj",
     ifscCode: "SBIN0001234",
-    receiverServiceAccount: "1234567890",
+    receiverServiceAccount: "68681801bb03d6320b86113d",
 };
 
 // --- QR Code Modal Component ---
@@ -60,7 +60,7 @@ const QRModal = ({ account, amount, onClose, onConfirm, timerData, onCopy }) => 
     const { formatTime, seconds, isActive } = timerData;
     const qrValue = {
         receiverServiceAccount: account.receiverServiceAccount,
-        url: `http://localhost:5174/transfer/${account.receiverServiceAccount}?amount=${amount}`, // Include amount in QR data
+        url: `http://192.168.31.17:5174/transfer/${account.receiverServiceAccount}?amount=${amount}`, // Include amount in QR data
         gateway: "LinkSuraksha",
         amount: amount, // Explicitly add amount for clarity in QR data
     };
@@ -178,6 +178,100 @@ const Payment = () => {
         }
     );
 
+    const loginAndGetToken = async () => {
+        try {
+            const response = await fetch("http://192.168.31.17:8001/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    email: "harshraj321@gmail.com",
+                    password: "HarshRaj"
+                })
+            });
+
+            if (!response.ok) throw new Error("Login failed");
+
+            const data = await response.json();
+            console.log("Logged in. Got token:", data.token);
+
+            // Store token in localStorage
+            localStorage.setItem("token", data.token);
+
+            return data.token;
+        } catch (err) {
+            console.error("Login error:", err);
+            return null;
+        }
+    };
+
+    const pollTransactions = useCallback(async () => {
+        try {
+            let token = localStorage.getItem("token");
+
+            if (!token) {
+                token = await loginAndGetToken();
+                if (!token) {
+                    console.error("Could not obtain token. Stopping poll.");
+                    return;
+                }
+            }
+
+            const response = await fetch(`http://192.168.31.17:8001/api/accounts/transactions`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
+            if (!response.ok) throw new Error("Network error");
+
+            const data = await response.json();
+            console.log("Polled transactions:", data);
+
+            const { sent = [], received = [] } = data.transactions;
+
+            const matchingReceived = received.find(
+                (tx) =>
+                    tx.fromAccountNumber === process.env.LINKSURAKSHA_ACCOUNT_NUMBER &&
+                    Number(tx.amount) === Number(amount)
+            );
+
+            const matchingSent = sent.find(
+                (tx) =>
+                    tx.toAccountNumber === account.receiverServiceAccount &&
+                    Number(tx.amount) === Number(amount)
+            );
+
+            if (matchingReceived || matchingSent) {
+                console.log("Matching transaction found:", matchingReceived || matchingSent);
+                setPaymentStatus("confirmed");
+                setShowQR(false);
+                stopTimer();
+                setTimeout(() => {
+                    navigate("/dashboard", { state: { paymentSuccess: true, amount } });
+                }, 1500);
+            }
+
+        } catch (err) {
+            console.error("Polling error:", err);
+        }
+    }, [account.receiverServiceAccount, amount, navigate, stopTimer, loginAndGetToken]);
+
+
+
+    useEffect(() => {
+        let interval = null;
+        if (showQR && isActive) {
+            interval = setInterval(() => {
+                pollTransactions();
+            }, 3000); // every 3 seconds
+        }
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [showQR, isActive, pollTransactions]);
+
     useEffect(() => {
         if (showQR) {
             startTimer(); // Start timer when QR is shown
@@ -215,7 +309,7 @@ const Payment = () => {
                 setShowQR(false);
                 // In a real app, you'd verify payment on backend, then redirect
                 setTimeout(() => {
-                    navigate("/dashboard", { state: { paymentSuccess: true, amount } });
+                    navigate("/", { state: { paymentSuccess: true, amount } });
                 }, 1500); // Redirect after short delay
             } else {
                 setPaymentStatus("failed");

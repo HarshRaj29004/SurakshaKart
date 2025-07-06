@@ -1,80 +1,135 @@
-/* payment.css */
-
-.payment-container {
-    max-width: 400px;
-    margin: 40px auto;
-    padding: 32px 24px;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-    font-family: 'Segoe UI', Arial, sans-serif;
+/* Utility styles */
+body {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(to bottom right, #f0f4ff, #faf5ff);
+  margin: 0;
+  padding: 0;
+  color: #333;
 }
 
-.payment-title {
-    font-size: 2rem;
-    font-weight: 600;
-    margin-bottom: 24px;
-    color: #222;
-    text-align: center;
+button {
+  outline: none;
+  border: none;
+  cursor: pointer;
 }
 
-.payment-form label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 500;
-    color: #444;
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-.payment-form input,
-.payment-form select {
-    width: 100%;
-    padding: 10px 12px;
-    margin-bottom: 18px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 1rem;
-    background: #fafafa;
-    transition: border 0.2s;
+.shadow-lg {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
 }
 
-.payment-form input:focus,
-.payment-form select:focus {
-    border-color: #0078d4;
-    outline: none;
+.shadow-xl {
+  box-shadow: 0 20px 25px rgba(0, 0, 0, 0.12);
 }
 
-.payment-btn {
-    width: 100%;
-    padding: 12px 0;
-    background: #0078d4;
-    color: #fff;
-    font-size: 1.1rem;
-    font-weight: 600;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s;
+/* QR Modal enhancements */
+.qr-modal {
+  animation: fadeIn 0.3s ease-out;
 }
 
-.payment-btn:hover {
-    background: #005fa3;
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
-.payment-summary {
-    margin-top: 28px;
-    padding: 16px;
-    background: #f4f8fb;
-    border-radius: 8px;
-    font-size: 1rem;
-    color: #333;
+/* QR code display */
+.qr-code-box {
+  background: #fff;
+  border: 3px solid #d1d5db;
+  border-radius: 1rem;
+  padding: 1rem;
+  transition: box-shadow 0.3s;
 }
 
-@media (max-width: 500px) {
-    .payment-container {
-        padding: 18px 8px;
-        max-width: 98vw;
-    }
-    .payment-title {
-        font-size: 1.3rem;
-    }
+.qr-code-box:hover {
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+/* Timer badge */
+.timer-badge {
+  background: #eff6ff;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  color: #2563eb;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Buttons */
+.primary-btn {
+  background: linear-gradient(to right, #2563eb, #7c3aed);
+  color: #fff;
+  border-radius: 0.75rem;
+  padding: 0.8rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.primary-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(37, 99, 235, 0.3);
+}
+
+.secondary-btn {
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 0.75rem;
+  padding: 0.8rem 1.2rem;
+  font-weight: 600;
+}
+
+.secondary-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Payment status cards */
+.status-card {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  text-align: center;
+}
+
+.status-success {
+  background: #ecfdf5;
+  color: #10b981;
+}
+
+.status-fail {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.status-pending {
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.status-timeout {
+  background: #fff7ed;
+  color: #f97316;
+}
+
+.status-cancelled {
+  background: #f9fafb;
+  color: #6b7280;
+}
+
+/* Responsive tweaks */
+@media (max-width: 480px) {
+  .primary-btn,
+  .secondary-btn {
+    font-size: 0.9rem;
+    padding: 0.7rem 1rem;
+  }
+
+  .qr-code-box {
+    padding: 0.5rem;
+  }
 }

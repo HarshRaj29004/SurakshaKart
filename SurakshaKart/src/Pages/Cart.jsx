@@ -45,7 +45,8 @@ const Cart = () => {
         <div className="cart-container">
             <h1 className="cart-title">Your Cart</h1>
 
-            {cartItems.length === 0 ? (
+            {cartItems.length === 0 ? 
+            (
                 <div className="cart-empty-message">
                     <p>Your cart is empty.</p>
                     <button onClick={() => navigate('/')} className="cart-shop-now-button">
@@ -119,7 +120,7 @@ const Cart = () => {
                         </button>
                     </div>
                 </div>
-            )}
+                )}
         </div>
     );
 };
