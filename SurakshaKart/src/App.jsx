@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Home from './Pages/Home.jsx';
 import Payment from './Pages/Payment.jsx';
 import Cart from './Pages/Cart.jsx';
 import Dashboard from './Pages/Dashboard.jsx';

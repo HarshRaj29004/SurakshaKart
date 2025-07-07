@@ -17,7 +17,7 @@ const Dashboard = () => {
         {
             id: 1,
             name: "Wireless Bluetooth Headphones",
-            price: 2999,
+            price: 2,
             originalPrice: 4999,
             image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=300&fit=crop",
             category: "Electronics",

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import QRCode from "react-qr-code";
-import { X, Copy, CheckCircle, Clock, XCircle } from "lucide-react"; // Import more icons
-import { useNavigate, useLocation } from "react-router-dom"; // Import useLocation
+import { X, Copy, CheckCircle, Clock, XCircle } from "lucide-react";
 import { useCallback } from "react";
 
 // --- Custom Hook for Timer (Abstraction) ---
@@ -55,14 +54,93 @@ const dummyAccount = {
     receiverServiceAccount: "68681801bb03d6320b86113d",
 };
 
+// --- Transaction Reference Input Modal ---
+const TransactionRefModal = ({ onClose, onSubmit, isLoading }) => {
+    const [transactionRef, setTransactionRef] = useState("");
+    const [error, setError] = useState("");
+
+    const handleSubmit = (e) => {
+        if (e) e.preventDefault();
+        if (!transactionRef.trim()) {
+            setError("Please enter a transaction reference");
+            return;
+        }
+        setError("");
+        onSubmit(transactionRef.trim());
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-2xl">
+                <div className="flex items-center justify-between mb-4 border-b pb-3">
+                    <h2 className="text-lg font-bold text-gray-800">Enter Transaction Reference</h2>
+                    <button
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        disabled={isLoading}
+                    >
+                        <X className="h-6 w-6" />
+                    </button>
+                </div>
+
+                <div onSubmit={handleSubmit}>
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Transaction Reference ID
+                        </label>
+                        <input
+                            type="text"
+                            value={transactionRef}
+                            onChange={(e) => setTransactionRef(e.target.value)}
+                            placeholder="Enter your transaction reference"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            disabled={isLoading}
+                            autoFocus
+                        />
+                        {error && (
+                            <p className="text-red-500 text-sm mt-1">{error}</p>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col space-y-2">
+                        <button
+                            type="button"
+                            onClick={handleSubmit}
+                            disabled={isLoading}
+                            className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isLoading ? (
+                                <div className="flex items-center justify-center">
+                                    <Clock className="h-4 w-4 mr-2 animate-spin" />
+                                    Confirming...
+                                </div>
+                            ) : (
+                                "Confirm Payment"
+                            )}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isLoading}
+                            className="w-full px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-all font-semibold disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // --- QR Code Modal Component ---
 const QRModal = ({ account, amount, onClose, onConfirm, timerData, onCopy }) => {
     const { formatTime, seconds, isActive } = timerData;
     const qrValue = {
         receiverServiceAccount: account.receiverServiceAccount,
-        url: `http://192.168.31.17:5174/transfer/${account.receiverServiceAccount}?amount=${amount}`, // Include amount in QR data
+        url: `http://localhost:5174/transfer/${account.receiverServiceAccount}?amount=${amount}`,
         gateway: "LinkSuraksha",
-        amount: amount, // Explicitly add amount for clarity in QR data
+        amount: amount,
     };
 
     return (
@@ -89,7 +167,7 @@ const QRModal = ({ account, amount, onClose, onConfirm, timerData, onCopy }) => 
                                 <Clock className="h-16 w-16 text-red-500 mb-2" />
                                 <p className="text-red-600 font-semibold">QR Expired!</p>
                                 <button
-                                    onClick={onClose} // Or a refresh QR function
+                                    onClick={onClose}
                                     className="mt-3 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
                                 >
                                     Try Again
@@ -140,7 +218,7 @@ const QRModal = ({ account, amount, onClose, onConfirm, timerData, onCopy }) => 
                     <button
                         onClick={onConfirm}
                         className="w-full px-5 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all font-semibold text-lg"
-                        disabled={!isActive} // Disable if QR expired
+                        disabled={!isActive}
                     >
                         I have paid (Confirm Payment)
                     </button>
@@ -158,29 +236,30 @@ const QRModal = ({ account, amount, onClose, onConfirm, timerData, onCopy }) => 
 
 // --- Main Payment Component ---
 const Payment = () => {
-    const location = useLocation();
-    const navigate = useNavigate();
-    const amount = location.state?.amount || 0; // Get amount from location state
+
+    // Mock amount for demo (you can change this)
+    const amount = location.state?.amount || 0;;
 
     const [showQR, setShowQR] = useState(false);
-    const [paymentStatus, setPaymentStatus] = useState("pending"); // 'pending', 'confirmed', 'failed', 'timeout'
+    const [showRefModal, setShowRefModal] = useState(false);
+    const [paymentStatus, setPaymentStatus] = useState("pending");
+    const [isConfirming, setIsConfirming] = useState(false);
     const [account] = useState(dummyAccount);
 
-    // Timer hook for QR code validity
+    // Timer hook for QR code validity - 10 minutes (600 seconds)
     const { seconds, formatTime, startTimer, stopTimer, isActive } = useTimer(
-        600, // 10 minutes
+        600,
         () => {
-            // Callback when timer ends
             if (paymentStatus === "pending") {
                 setPaymentStatus("timeout");
-                setShowQR(false); // Close QR modal on timeout
+                setShowQR(false);
             }
         }
     );
 
     const loginAndGetToken = async () => {
         try {
-            const response = await fetch("http://192.168.31.17:8001/api/auth/login", {
+            const response = await fetch("http://localhost:8001/api/auth/login", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"
@@ -194,133 +273,94 @@ const Payment = () => {
             if (!response.ok) throw new Error("Login failed");
 
             const data = await response.json();
-            console.log("Logged in. Got token:", data.token);
+            console.log("Logged in. Got token:", data.user.token);
 
-            // Store token in localStorage
-            localStorage.setItem("token", data.token);
-
-            return data.token;
+            return data.user.token;
         } catch (err) {
             console.error("Login error:", err);
             return null;
         }
     };
 
-    const pollTransactions = useCallback(async () => {
-        try {
-            let token = localStorage.getItem("token");
-
-            if (!token) {
-                token = await loginAndGetToken();
-                if (!token) {
-                    console.error("Could not obtain token. Stopping poll.");
-                    return;
-                }
-            }
-
-            const response = await fetch(`http://192.168.31.17:8001/api/accounts/transactions`, {
-                headers: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
-
-            if (!response.ok) throw new Error("Network error");
-
-            const data = await response.json();
-            console.log("Polled transactions:", data);
-
-            const { sent = [], received = [] } = data.transactions;
-
-            const matchingReceived = received.find(
-                (tx) =>
-                    tx.fromAccountNumber === process.env.LINKSURAKSHA_ACCOUNT_NUMBER &&
-                    Number(tx.amount) === Number(amount)
-            );
-
-            const matchingSent = sent.find(
-                (tx) =>
-                    tx.toAccountNumber === account.receiverServiceAccount &&
-                    Number(tx.amount) === Number(amount)
-            );
-
-            if (matchingReceived || matchingSent) {
-                console.log("Matching transaction found:", matchingReceived || matchingSent);
-                setPaymentStatus("confirmed");
-                setShowQR(false);
-                stopTimer();
-                setTimeout(() => {
-                    navigate("/dashboard", { state: { paymentSuccess: true, amount } });
-                }, 1500);
-            }
-
-        } catch (err) {
-            console.error("Polling error:", err);
-        }
-    }, [account.receiverServiceAccount, amount, navigate, stopTimer, loginAndGetToken]);
-
-
-
-    useEffect(() => {
-        let interval = null;
-        if (showQR && isActive) {
-            interval = setInterval(() => {
-                pollTransactions();
-            }, 3000); // every 3 seconds
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [showQR, isActive, pollTransactions]);
-
     useEffect(() => {
         if (showQR) {
-            startTimer(); // Start timer when QR is shown
+            startTimer();
         } else {
-            stopTimer(); // Stop timer when QR is hidden
+            stopTimer();
         }
-    }, [showQR, startTimer, stopTimer]); // Depend on showQR and timer control functions
+    }, [showQR, startTimer, stopTimer]);
 
     const handleShowQR = () => {
-        setPaymentStatus("pending"); // Reset status when showing QR
+        setPaymentStatus("pending");
         setShowQR(true);
     };
 
     const handleCloseQR = () => {
         setShowQR(false);
-        stopTimer(); // Ensure timer stops if modal is closed manually
+        stopTimer();
         if (paymentStatus === "pending") {
-            setPaymentStatus("cancelled"); // Indicate that the payment was cancelled by user
+            setPaymentStatus("cancelled");
         }
     };
 
-    const handlePaymentConfirmation = async () => {
-        setPaymentStatus("processing"); // Show processing state
-        stopTimer(); // Stop the timer immediately upon confirmation attempt
+    const handlePaymentConfirmation = () => {
+        setShowQR(false);
+        setShowRefModal(true);
+    };
+
+    const handleRefModalClose = () => {
+        setShowRefModal(false);
+        setShowQR(true); // Show QR again if user cancels
+    };
+
+    const handleTransactionRefSubmit = async (transactionRef) => {
+        setIsConfirming(true);
+        setPaymentStatus("processing");
+        stopTimer();
 
         try {
-            // Simulate API call for payment confirmation
-            // Replace with actual API call to your backend
-            await new Promise((resolve) => setTimeout(resolve, 2000)); // Simulate network delay
+            const token = await loginAndGetToken();
 
-            const success = Math.random() > 0.1; // 90% chance of success for demonstration
-
-            if (success) {
-                setPaymentStatus("confirmed");
-                setShowQR(false);
-                // In a real app, you'd verify payment on backend, then redirect
-                setTimeout(() => {
-                    navigate("/", { state: { paymentSuccess: true, amount } });
-                }, 1500); // Redirect after short delay
-            } else {
+            if (!token) {
+                console.error("Could not login. Payment failed.");
                 setPaymentStatus("failed");
-                setShowQR(false);
-                // Optionally show an error message
-                // setTimeout(() => setPaymentStatus("pending"), 3000); // Allow retry after 3 seconds
+                setShowRefModal(false);
+                return;
             }
+
+            const response = await fetch("http://localhost:8001/api/users/confirm", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    transactionReference: transactionRef.toLowerCase(),
+                    amount: amount
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error("Transaction confirmation failed");
+            }
+
+            const data = await response.json();
+            console.log("Transaction confirmed:", data);
+
+            setPaymentStatus("confirmed");
+            setShowRefModal(false);
+
+            setTimeout(() => {
+                console.log("Navigating to dashboard with payment success");
+                // navigate("/", { state: { paymentSuccess: true, amount } });
+            }, 1500);
+
         } catch (error) {
             console.error("Payment confirmation error:", error);
             setPaymentStatus("failed");
-            setShowQR(false);
+            setShowRefModal(false);
+        } finally {
+            setIsConfirming(false);
         }
     };
 
@@ -330,23 +370,40 @@ const Payment = () => {
             .catch((err) => console.error("Failed to copy:", err));
     };
 
-    if (amount <= 0) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-red-50 text-red-700 p-4">
-                <XCircle className="h-16 w-16 mb-4" />
-                <h1 className="text-2xl font-bold mb-2">Invalid Payment Amount</h1>
-                <p className="text-lg text-center mb-6">
-                    It looks like there's no amount specified for this payment. Please go back to the cart or product page.
-                </p>
-                <button
-                    onClick={() => navigate('/cart')}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition font-semibold"
-                >
-                    Go to Cart
-                </button>
-            </div>
-        );
-    }
+    // For demo purposes, we'll comment out the amount validation
+    // if (amount <= 0) {
+    //     return (
+    //         <div className="flex flex-col items-center justify-center min-h-screen bg-red-50 text-red-700 p-4">
+    //             <XCircle className="h-16 w-16 mb-4" />
+    //             <h1 className="text-2xl font-bold mb-2">Invalid Payment Amount</h1>
+    //             <p className="text-lg text-center mb-6">
+    //                 It looks like there's no amount specified for this payment. Please go back to the cart or product page.
+    //             </p>
+    //             <button
+    //                 onClick={() => console.log("Navigate to cart")}
+    //                 className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition font-semibold"
+    //             >
+    //                 Go to Cart
+    //             </button>
+    //         </div>
+    //     );
+    // }0) {
+    //     return (
+    //         <div className="flex flex-col items-center justify-center min-h-screen bg-red-50 text-red-700 p-4">
+    //             <XCircle className="h-16 w-16 mb-4" />
+    //             <h1 className="text-2xl font-bold mb-2">Invalid Payment Amount</h1>
+    //             <p className="text-lg text-center mb-6">
+    //                 It looks like there's no amount specified for this payment. Please go back to the cart or product page.
+    //             </p>
+    //             <button
+    //                 onClick={() => navigate('/cart')}
+    //                 className="px-6 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700 transition font-semibold"
+    //             >
+    //                 Go to Cart
+    //             </button>
+    //         </div>
+    //     );
+    // }
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
@@ -399,31 +456,16 @@ const Payment = () => {
                     <div className="flex flex-col items-center justify-center text-red-600 font-semibold text-xl py-4">
                         <Clock className="h-16 w-16 mb-3" />
                         Payment Timeout!
-                        <p className="text-base text-gray-600 mt-2">The QR code expired. Please try again.</p>
+                        <p className="text-base text-gray-600 mt-2">The QR code expired.</p>
                         <button
                             onClick={handleShowQR}
                             className="mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
                         >
-                            Generate New QR
-                        </button>
-                    </div>
-                )}
-
-                {paymentStatus === "cancelled" && (
-                    <div className="flex flex-col items-center justify-center text-orange-600 font-semibold text-xl py-4">
-                        <XCircle className="h-16 w-16 mb-3" />
-                        Payment Cancelled
-                        <p className="text-base text-gray-600 mt-2">You closed the payment window.</p>
-                        <button
-                            onClick={handleShowQR}
-                            className="mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold"
-                        >
-                            Try Payment Again
+                            Try Again
                         </button>
                     </div>
                 )}
             </div>
-
 
             {showQR && (
                 <QRModal
@@ -433,6 +475,14 @@ const Payment = () => {
                     onConfirm={handlePaymentConfirmation}
                     timerData={{ seconds, formatTime, isActive }}
                     onCopy={handleCopyToClipboard}
+                />
+            )}
+
+            {showRefModal && (
+                <TransactionRefModal
+                    onClose={handleRefModalClose}
+                    onSubmit={handleTransactionRefSubmit}
+                    isLoading={isConfirming}
                 />
             )}
         </div>
