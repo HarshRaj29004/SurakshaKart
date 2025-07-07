@@ -328,7 +328,7 @@ const Payment = () => {
                 return;
             }
 
-            const response = await fetch("http://localhost:8001/api/users/confirm", {
+            const response = await fetch("http://localhost:8001/api/accounts/confirm", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
