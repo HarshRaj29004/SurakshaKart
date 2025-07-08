@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import QRCode from "react-qr-code";
 import { X, Copy, CheckCircle, Clock, XCircle } from "lucide-react";
 import { useCallback } from "react";
+import { redirect } from "react-router-dom";
 
 // --- Custom Hook for Timer (Abstraction) ---
 const useTimer = (initialSeconds, onTimerEnd) => {
@@ -136,12 +137,7 @@ const TransactionRefModal = ({ onClose, onSubmit, isLoading }) => {
 // --- QR Code Modal Component ---
 const QRModal = ({ account, amount, onClose, onConfirm, timerData, onCopy }) => {
     const { formatTime, seconds, isActive } = timerData;
-    const qrValue = {
-        receiverServiceAccount: account.receiverServiceAccount,
-        url: `http://localhost:5174/transfer/${account.receiverServiceAccount}?amount=${amount}`,
-        gateway: "LinkSuraksha",
-        amount: amount,
-    };
+    const qrValue = `http://localhost/transfer/${account.receiverServiceAccount}?amount=${amount}`;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50 animate-fade-in">
@@ -178,7 +174,7 @@ const QRModal = ({ account, amount, onClose, onConfirm, timerData, onCopy }) => 
                                 id="qr-code"
                                 size={256}
                                 style={{ height: "auto", maxWidth: "90%", width: "90%" }}
-                                value={JSON.stringify(qrValue)}
+                                value={qrValue}
                                 viewBox={`0 0 256 256`}
                             />
                         )}
